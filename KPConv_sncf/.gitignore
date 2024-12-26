@@ -6,6 +6,8 @@
 /docker_scripts
 /kernels/dispositions
 core
+Rail3D_KPConv/
+old_*
 
 # VSCode related
 *.code-workspace

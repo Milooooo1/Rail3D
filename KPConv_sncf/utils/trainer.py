@@ -29,8 +29,11 @@ import numpy as np
 import pickle
 import os
 from os import makedirs, remove
-from os.path import exists, join
+from os.path import exists, join, isfile, isdir
+import pathlib
 import time
+import math
+import re
 import sys
 
 # PLY reader
@@ -160,8 +163,8 @@ class ModelTrainer:
         for epoch in range(config.max_epoch):
 
             # Remove File for kill signal
-            if epoch == config.max_epoch - 1 and exists(PID_file):
-                remove(PID_file)
+            # if self.epoch >= config.max_epoch - 1 and exists(PID_file):
+                # remove(PID_file)
 
             self.step = 0
             for batch in training_loader:
@@ -272,11 +275,71 @@ class ModelTrainer:
 
             # Validation
             net.eval()
-            self.validation(net, val_loader, config)
+            mIoU = self.validation(net, val_loader, config)
             net.train()
+
+            # Saving best checkpoint
+            if config.saving:
+                save_dict = {'epoch': self.epoch,
+                            'model_state_dict': net.state_dict(),
+                            'optimizer_state_dict': self.optimizer.state_dict(),
+                            'saving_path': config.saving_path}
+
+                self.save_best_checkpoint(config.saving_path, checkpoint_directory, save_dict, self.epoch)
 
         print('Finished Training')
         return
+
+    def save_best_checkpoint(self, saving_path, checkpoint_directory, save_dict, epoch, val_IoUs_file="val_IoUs.txt"):
+        # Check if checkpoint directory exists
+        if not isdir(checkpoint_directory):
+            print(f"Error: Checkpoint directory '{checkpoint_directory}' does not exist.")
+            return
+
+        # Build valIoUs path
+        val_IoUs_path = join(saving_path, val_IoUs_file)
+
+        # Check if val_IoUs file exists
+        if not isfile(val_IoUs_path):
+            print(f"Error: {val_IoUs_file} not found in {checkpoint_directory}.")
+            return
+
+        # Read the most recent mIoUs from val_IoUs.txt and calculate the mean
+        with open(val_IoUs_path, 'r') as f:
+            lines = f.readlines()
+            if not lines:
+                print(f"Error: {val_IoUs_file} is empty.")
+                return
+            most_recent_line = lines[-1]
+            mIoUs = [float(value) for value in most_recent_line.strip().split()]
+            mIoU = round((sum(mIoUs) / len(mIoUs)) * 100, 1)
+
+        # Find the current best checkpoint, if exists
+        chkps = [file for file in pathlib.Path(checkpoint_directory).iterdir() if file.is_file and file.suffix == ".tar" and "best_chkp" in file.stem]
+        best_checkpoint_name = None
+        best_mIoU = -1
+        if len(chkps) > 0:
+            pattern = r'best_chkp_mIoU_(\d+\.\d+)_epoch_\d+\.tar'
+            match = re.search(pattern, str(chkps[0]))  # Take the first match
+
+            if match:
+                best_mIoU = float(match.group(1))  # Extracted mIoU value
+                best_checkpoint_name =  str(chkps[0])
+            
+        # Check if the current mIoU is better
+        if mIoU > best_mIoU:
+            # Save the new best checkpoint
+            new_checkpoint_name = f'best_chkp_mIoU_{mIoU:.4f}_epoch_{epoch}.tar'
+            new_checkpoint_path = join(checkpoint_directory, new_checkpoint_name)
+            torch.save(save_dict, new_checkpoint_path)
+
+            # Remove the old inferior checkpoint, if exists
+            if best_checkpoint_name and isfile(best_checkpoint_name):
+                os.remove(best_checkpoint_name)
+
+            print(f"New best checkpoint saved: {new_checkpoint_name}")
+        else:
+            print(f"Checkpoint not saved. Current mIoU ({mIoU:.4f}) did not exceed the best mIoU ({best_mIoU:.4f}).")
 
     # Validation methods
     # ------------------------------------------------------------------------------------------------------------------
@@ -288,7 +351,7 @@ class ModelTrainer:
         elif config.dataset_task == 'segmentation':
             self.object_segmentation_validation(net, val_loader, config)
         elif config.dataset_task == 'cloud_segmentation':
-            self.cloud_segmentation_validation(net, val_loader, config)
+            return self.cloud_segmentation_validation(net, val_loader, config)
         elif config.dataset_task == 'slam_segmentation':
             self.slam_segmentation_validation(net, val_loader, config)
         else:
@@ -418,7 +481,7 @@ class ModelTrainer:
         """
         Validation method for cloud segmentation models
         """
-
+        print(f"Validating...")
         ############
         # Initialize
         ############
@@ -429,9 +492,9 @@ class ModelTrainer:
         val_smooth = 0.95
         softmax = torch.nn.Softmax(1)
 
-        # Do not validate if dataset has no validation cloud
-        if val_loader.dataset.validation_split not in val_loader.dataset.all_splits:
-            return
+        # # Do not validate if dataset has no validation cloud
+        # if val_loader.dataset.validation_split not in val_loader.dataset.all_splits:
+        #     return
 
         # Number of classes including ignored labels
         nc_tot = val_loader.dataset.num_classes
@@ -563,10 +626,12 @@ class ModelTrainer:
         t5 = time.time()
 
         # Saving (optionnal)
+        print(f"Saving IoUs")
         if config.saving:
 
             # Name of saving file
             test_file = join(config.saving_path, 'val_IoUs.txt')
+            print(test_file)
 
             # Line to write:
             line = ''
@@ -652,7 +717,7 @@ class ModelTrainer:
             print('Save2 ..... {:.1f}s'.format(t7 - t6))
             print('\n************************\n')
 
-        return
+        return mIoU
 
     def slam_segmentation_validation(self, net, val_loader, config, debug=True):
         """

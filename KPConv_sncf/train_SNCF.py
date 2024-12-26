@@ -59,7 +59,7 @@ class SNCFConfig(Config):
     dataset_task = ''
 
     # Number of CPU threads for the input pipeline
-    input_threads = 25
+    input_threads = 15
 
     #########################
     # Architecture definition
@@ -205,7 +205,7 @@ if __name__ == '__main__':
     ###############
 
     # Choose here if you want to start training from a previous snapshot (None for new training)
-    previous_training_path = ''
+    previous_training_path = r'C:\Project\Pointclouds\Rail3D\KPConv_sncf\results\Log_2024-12-20_19-20-32'
 
     # Choose index of checkpoint to start from. If None, uses the latest chkp
     chkp_idx = None
@@ -237,7 +237,7 @@ if __name__ == '__main__':
     config = SNCFConfig()
     if previous_training_path:
         config.load(os.path.join('results/', previous_training_path))
-        config.saving_path = None
+        # config.saving_path = os.path.join('results/', previous_training_path)
 
     # Get path from argument if given
     if len(sys.argv) > 1:

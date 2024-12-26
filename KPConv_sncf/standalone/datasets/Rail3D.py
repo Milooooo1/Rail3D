@@ -7,7 +7,7 @@
 #
 # ----------------------------------------------------------------------------------------------------------------------
 #
-#      Class handling SNCF_MLS (with geometric features) dataset.
+#      Class handling Rail3D_MLS (with geometric features) dataset.
 #      Implements a Dataset, a Sampler, and a collate_fn
 #
 # ----------------------------------------------------------------------------------------------------------------------
@@ -52,14 +52,14 @@ from utils.config import bcolors
 #       \******************************/
 
 
-class SNCFDataset(PointCloudDataset):
-    """Class to handle SNCF dataset."""
+class Rail3DDataset(PointCloudDataset):
+    """Class to handle Rail3D dataset."""
 
     def __init__(self, config, set='training', use_potentials=True, load_data=True):
         """
         This dataset is small enough to be stored in-memory, so load all point clouds here
         """
-        PointCloudDataset.__init__(self, 'SNCF_MLS')
+        PointCloudDataset.__init__(self, 'Rail3D_MLS')
 
         ############
         # Parameters
@@ -117,7 +117,7 @@ class SNCFDataset(PointCloudDataset):
                             'single-track-section-7-classified' ]
         self.all_splits = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]#, 11, 12, 13, 14, 15, 16]
         self.validation_split = [3, 8, 10]
-        # self.test_cloud_names = ['sncf_09', 'sncf_11', 'sncf_13']
+        # self.test_cloud_names = ['Rail3D_09', 'Rail3D_11', 'Rail3D_13']
         self.test_splits = [2, 9]
         self.train_splits = [1, 4, 5, 6, 7]
 
@@ -131,7 +131,7 @@ class SNCFDataset(PointCloudDataset):
         elif self.set in ['validation', 'test', 'ERF']:
             self.epoch_n = config.validation_size * config.batch_num
         else:
-            raise ValueError('Unknown set for SNCF (with features) data: ', self.set)
+            raise ValueError('Unknown set for Rail3D (with features) data: ', self.set)
 
         # Stop data is not needed
         if not load_data:
@@ -141,7 +141,7 @@ class SNCFDataset(PointCloudDataset):
         # Prepare ply files
         ###################
 
-        self.prepare_SNCF_ply()
+        self.prepare_Rail3D_ply()
 
         ################
         # Load ply files
@@ -663,7 +663,7 @@ class SNCFDataset(PointCloudDataset):
 
         return input_list
 
-    def prepare_SNCF_ply(self):
+    def prepare_Rail3D_ply(self):
 
         print('\nPreparing ply files')
         t0 = time.time()
@@ -897,10 +897,10 @@ class SNCFDataset(PointCloudDataset):
 #       \********************************/
 
 
-class SNCFSampler(Sampler):
-    """Sampler for SNCF (with features)"""
+class Rail3DSampler(Sampler):
+    """Sampler for Rail3D (with features)"""
 
-    def __init__(self, dataset: SNCFDataset):
+    def __init__(self, dataset: Rail3DDataset):
         Sampler.__init__(self, dataset)
 
         # Dataset used by the sampler (no copy is made in memory)
@@ -1376,8 +1376,8 @@ class SNCFSampler(Sampler):
         print('Calibration done in {:.1f}s\n'.format(time.time() - t0))
         return
 
-class SNCFCustomBatch:
-    """Custom batch definition with memory pinning for SNCF (with features)"""
+class Rail3DCustomBatch:
+    """Custom batch definition with memory pinning for Rail3D (with features)"""
 
     def __init__(self, input_list):
 
@@ -1515,8 +1515,8 @@ class SNCFCustomBatch:
         return all_p_list
 
 
-def SNCFCollate(batch_data):
-    return SNCFCustomBatch(batch_data)
+def Rail3DCollate(batch_data):
+    return Rail3DCustomBatch(batch_data)
 
 
 # ----------------------------------------------------------------------------------------------------------------------

@@ -441,6 +441,9 @@ class ModelTester:
                         # Get the predicted labels
                         preds = test_loader.dataset.label_values[np.argmax(proj_probs[i], axis=1)].astype(np.int32)
 
+                        # Increment each value in preds by one
+                        preds += 1
+
                         # Save plys
                         cloud_name = file_path.split('\\')[-1]
                         test_name = join(test_path, 'predictions', cloud_name)
@@ -840,7 +843,7 @@ if __name__ == '__main__':
     #       > 'last_XXX': Automatically retrieve the last trained model on dataset XXX
     #       > '(old_)results/Log_YYYY-MM-DD_HH-MM-SS': Directly provide the path of a trained model
 
-    chosen_log = 'results/Log_2023-11-23_10-53-32'
+    chosen_log = r'results\Log_2024-12-20_19-20-32'
 
     # Choose the index of the checkpoint to load OR None if you want to load the current checkpoint
     chkp_idx = -1
@@ -876,6 +879,8 @@ if __name__ == '__main__':
         chosen_chkp = np.sort(chkps)[chkp_idx]
     chosen_chkp = os.path.join(chosen_log, 'checkpoints', chosen_chkp)
 
+    chosen_chkp = r'F:\Project\Pointclouds\Rail3D\KPConv_sncf\results\Log_2024-12-20_19-20-32\checkpoints\best_chkp_mIoU_62.0000_epoch_2.tar'
+
     # Initialize configuration class
     config = Config()
     config.load(chosen_log)
@@ -891,7 +896,7 @@ if __name__ == '__main__':
     #config.batch_num = 3
     config.in_radius = 3
     config.validation_size = 50
-    config.input_threads = 10
+    config.input_threads = 2
 
     ##############
     # Prepare Data

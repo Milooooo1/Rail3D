@@ -713,8 +713,8 @@ def experiment_name_1():
     """
 
     # Using the dates of the logs, you can easily gather consecutive ones. All logs should be of the same dataset.
-    start = 'Log_2023-08-22_20-00-14'
-    end = 'Log_2023-08-22_20-00-14'
+    start = 'Log_2024-12-20_19-20-32'
+    end = 'Log_2024-12-20_19-20-32'
 
     # Name of the result path
     res_path = 'results'
@@ -723,10 +723,7 @@ def experiment_name_1():
     logs = np.sort([join(res_path, l) for l in listdir_str(res_path) if start <= l <= end])
 
     # Give names to the logs (for plot legends)
-    logs_names = ['name_log_1',
-                  'name_log_2',
-                  'name_log_3',
-                  'name_log_4']
+    logs_names = ['0-50', '50-150', '150-300']
 
     # safe check log names
     logs_names = np.array(logs_names[:len(logs)])
