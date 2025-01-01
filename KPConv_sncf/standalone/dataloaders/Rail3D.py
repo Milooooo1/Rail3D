@@ -26,10 +26,12 @@
 import time
 import os
 import numpy as np
+import pathlib
 import pickle
 import torch
 import math
 import warnings
+from sklearn.neighbors import KDTree
 from multiprocessing import Lock
 
 
@@ -38,11 +40,12 @@ from os import listdir
 from os.path import exists, join, isdir
 
 # Dataset parent class
-from datasets.common import PointCloudDataset
+from .common import PointCloudDataset
 from torch.utils.data import Sampler, get_worker_info
-from utils.mayavi_visu import *
+# from .utils.mayavi_visu import *
 
-from datasets.common import grid_subsampling
+from utils.ply import read_ply, write_ply
+from .common import grid_subsampling
 from utils.config import bcolors
 
 
@@ -55,7 +58,7 @@ from utils.config import bcolors
 class Rail3DDataset(PointCloudDataset):
     """Class to handle Rail3D dataset."""
 
-    def __init__(self, config, set='training', use_potentials=True, load_data=True):
+    def __init__(self, config, files, output_dir, use_potentials=True, load_data=True):
         """
         This dataset is small enough to be stored in-memory, so load all point clouds here
         """
@@ -83,9 +86,6 @@ class Rail3DDataset(PointCloudDataset):
         # List of classes ignored during training (can be empty)
         self.ignored_labels = np.array([])
 
-        # Dataset folder
-        self.path = r'C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\KPConv'
-
         # Type of task conducted on this dataset
         self.dataset_task = 'cloud_segmentation'
 
@@ -97,45 +97,21 @@ class Rail3DDataset(PointCloudDataset):
         self.config = config
 
         # Training or test set
-        self.set = set
+        self.set = 'test'
 
         # Using potential or random epoch generation
         self.use_potentials = use_potentials
 
-        # Path of the training files
-        # self.train_path = 'original_ply'
-        self.train_path = 'train'
-        self.original_ply_path = 'original_ply'
-
-        # List of files to process
-        ply_path = join(self.path, self.train_path)
-
-        # Proportion of validation scenes
-        self.cloud_names = ['PVS_202305_185200_434100_P1', 'PVS_202305_185300_434100_P1-part1', 'PVS_202305_185300_434100_P1-part2',
-                            'single-track-section-1-classified', 'single-track-section-2-classified', 'single-track-section-3-classified', 
-                            'single-track-section-4-classified', 'single-track-section-5-classified', 'single-track-section-6-classified',
-                            'single-track-section-7-classified' ]
-        self.all_splits = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]#, 11, 12, 13, 14, 15, 16]
-        self.validation_split = [3, 8, 10]
-        # self.test_cloud_names = ['Rail3D_09', 'Rail3D_11', 'Rail3D_13']
-        self.test_splits = [2, 9]
-        self.train_splits = [1, 4, 5, 6, 7]
-
-        # Define offset
-        # self.UTM_OFFSET = [1701000, 3111000, 0]
-        self.UTM_OFFSET = [185000, 434000, 0]
-
-        # Number of models used per epoch
-        if self.set == 'training':
-            self.epoch_n = config.epoch_steps * config.batch_num
-        elif self.set in ['validation', 'test', 'ERF']:
-            self.epoch_n = config.validation_size * config.batch_num
-        else:
-            raise ValueError('Unknown set for Rail3D (with features) data: ', self.set)
+        self.path = output_dir
+        self.util_path = 'utils'
 
         # Stop data is not needed
         if not load_data:
             return
+
+        # List of training files
+        self.files = [pathlib.Path(file).parent / self.util_path / pathlib.Path(file).name for file in files]
+        self.cloud_names = [pathlib.Path(f).stem for f in files]
 
         ###################
         # Prepare ply files
@@ -146,33 +122,6 @@ class Rail3DDataset(PointCloudDataset):
         ################
         # Load ply files
         ################
-
-        # List of training files
-        self.files = []
-        for i, f in enumerate(self.cloud_names):
-            if self.set == 'training':
-                if self.all_splits[i] in self.train_splits:
-                    self.files += [join(ply_path, f + '.ply')]
-            elif self.set in ['validation', 'ERF']:
-                if self.all_splits[i] in self.validation_split:
-                    self.files += [join(ply_path, f + '.ply')]
-            elif self.set == 'test':
-                if self.all_splits[i] in self.test_splits:
-                    self.files += [join(ply_path, f + '.ply')]
-            else:
-                raise ValueError('Unknown set for NPM3D data: ', self.set)
-        print('The set is ' + str(self.set))
-        if self.set == 'training':
-            self.cloud_names = [f for i, f in enumerate(self.cloud_names)
-                                if self.all_splits[i] in self.train_splits]
-        elif self.set in ['validation', 'ERF']:
-            self.cloud_names = [f for i, f in enumerate(self.cloud_names)
-                                if self.all_splits[i] in self.validation_split]
-        elif self.set == 'test':
-            self.cloud_names = [f for i, f in enumerate(self.cloud_names)
-                                if self.all_splits[i] in self.test_splits]
-        print('The files are ' + str(self.cloud_names))
-
 
         if 0 < self.config.first_subsampling_dl <= 0.01:
             raise ValueError('subsampling_parameter too low (should be over 1 cm')
@@ -669,7 +618,7 @@ class Rail3DDataset(PointCloudDataset):
         t0 = time.time()
 
         # Folder for the ply files
-        ply_path = join(self.path, self.train_path)
+        ply_path = join(self.path, self.util_path)
         if not exists(ply_path):
             os.mkdir(ply_path)
 
@@ -682,16 +631,18 @@ class Rail3DDataset(PointCloudDataset):
 
             print('\nPreparing ply for cloud {:s}\n'.format(cloud_name))
 
-            pc = read_ply(join(self.path, 'original_ply\\' + cloud_name + '.ply'))
+            pc = read_ply(join(self.path, cloud_name + '.ply'))
             centroid = np.array([pc['x'].mean(), pc['y'].mean(), pc['z'].mean()])
             xyz = np.vstack((pc['x'] - centroid[0], pc['y'] - centroid[1], pc['z'] - centroid[2])).T.astype(np.float32)
+
             # color = np.vstack((pc['red'], pc['green'], pc['blue'])).T.astype(np.uint8)
             # intensity = pc['scalar_Intensity'].astype(np.uint8)
             # rgbi = np.hstack((color, intensity.reshape(-1, 1)))
             #change 2023 i substract -1 from label, just to make remapping from [1,8] to [0,7]
             labels = (pc['scalar_Classification']-1).astype(np.uint8)
-            # from collections import Counter
-            # print(Counter(labels))
+            mask = (pc["scalar_Classification"] <= 9) & (pc["scalar_Classification"] != 0)
+            labels = labels[mask]
+            xyz = xyz[mask]
 
             # Save as ply
             write_ply(join(ply_path, cloud_name + '.ply'),
@@ -711,6 +662,7 @@ class Rail3DDataset(PointCloudDataset):
         if not exists(tree_path):
             os.mkdir(tree_path)
 
+        ply_path = join(self.path, self.util_path)
         ##############
         # Load KDTrees
         ##############
@@ -1651,7 +1603,7 @@ def debug_show_clouds(dataset, loader):
             print(batch.rots.is_pinned())
             print(batch.model_inds.is_pinned())
 
-            show_input_batch(batch)
+            # show_input_batch(batch)
 
         print('*******************************************')
 

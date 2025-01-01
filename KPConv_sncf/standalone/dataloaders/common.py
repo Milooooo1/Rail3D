@@ -28,8 +28,8 @@ import sys
 import torch
 from torch.utils.data import DataLoader, Dataset
 from utils.config import Config
-from utils.mayavi_visu import *
-from kernels.kernel_points import create_3D_rotations
+# from utils.mayavi_visu import *
+from models.kernel_points import create_3D_rotations
 
 # Subsampling extension
 import cpp_wrappers.cpp_subsampling.grid_subsampling as cpp_subsampling
@@ -325,7 +325,7 @@ class PointCloudDataset(Dataset):
                 test_p = [np.vstack([points, augmented_points])]
                 test_n = [np.vstack([normals, augmented_normals])]
                 test_l = [np.hstack([points[:, 2]*0, augmented_points[:, 2]*0+1])]
-                show_ModelNet_examples(test_p, test_n, test_l)
+                # show_ModelNet_examples(test_p, test_n, test_l)
 
             return augmented_points, augmented_normals, scale, R
 

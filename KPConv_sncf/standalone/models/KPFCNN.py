@@ -1,4 +1,4 @@
-from blocks import *
+from .blocks import *
 import numpy as np
 
 class KPFCNN(nn.Module):
