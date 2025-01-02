@@ -140,18 +140,17 @@ def cloud_segment(net, test_loader, save_destination, config):
             if (t[-1] - last_display) > 1.0:
                 last_display = t[-1]
                 message = 'e{:03d}-i{:04d} => {:.1f}% (timings : {:4.2f} {:4.2f} {:4.2f})'
-                pbar.set_description(message.format(test_epoch, i,
-                                          100 * i / config.validation_size,
+                pbar.set_description(message.format(test_epoch, i+1,
+                                          100 * (i+1) / config.validation_size,
                                           1000 * (mean_dt[0]),
                                           1000 * (mean_dt[1]),
                                           1000 * (mean_dt[2])))
-            pbar.update(i - pbar.n)
-        pbar.close()
+            pbar.update(i - pbar.n + 1)
 
         # Update minimum od potentials
         new_min = torch.min(test_loader.dataset.min_potentials)
-        print('Test epoch {:d}, end. Min potential = {:.1f}'.format(test_epoch, new_min))
-        #print([np.mean(pots) for pots in test_loader.dataset.potentials])
+        pbar.set_description('Test epoch {:d}, end. Min potential = {:.1f}'.format(test_epoch, new_min))
+        pbar.close()
 
         # Save predicted cloud
         if last_min + 1 < new_min:
@@ -159,19 +158,11 @@ def cloud_segment(net, test_loader, save_destination, config):
             # Update last_min
             last_min += 1
 
-            # Save real IoU once in a while
-            # if int(np.ceil(new_min)) % 1 == 0:
-
             # Project predictions
             print('\nReproject Vote #{:d}'.format(int(np.floor(new_min))))
             t1 = time.time()
             proj_probs = []
             for i, file_path in enumerate(test_loader.dataset.files):
-
-                # print(i, file_path, test_loader.dataset.test_proj[i].shape, self.test_probs[i].shape)
-
-                # print(test_loader.dataset.test_proj[i].dtype, np.max(test_loader.dataset.test_proj[i]))
-                # print(test_loader.dataset.test_proj[i][:5])
 
                 # Reproject probs on the evaluations points
                 probs = test_probs[i][test_loader.dataset.test_proj[i], :]
@@ -255,8 +246,13 @@ def main():
         print(f"\033[91mERROR:\033[0m {input_path} is not a valid file or directory.")
         exit()
 
-    if not model_path.exists() or not model_path.is_dir():#or not model_path.suffix == '.tar':
-        print(f"\033[91mERROR:\033[0m {model_path} is not a valid model.")
+    if not model_path.exists() or not model_path.is_dir():
+        print(f"\033[91mERROR:\033[0m {model_path} is not a valid directory.")
+        exit()
+
+    chkp_path = [f for f in (model_path / Path('checkpoints')).iterdir() if f.suffix == '.tar'][0]
+    if not chkp_path.exists() or not chkp_path.is_file() or not chkp_path.suffix == '.tar':
+        print(f"\033[91mERROR:\033[0m {chkp_path} is not a valid model.")
         exit()
 
     output_path = files[0].parent if args.output == 'results' else Path(args.output).resolve()
@@ -296,9 +292,17 @@ def main():
     # Calibrate samplers
     sampler.calibration(data_loader, verbose=True)
 
+    # Load model
     net = KPFCNN(config, dataset.label_values, dataset.ignored_labels)
+    checkpoint = torch.load(chkp_path)
+    net.load_state_dict(checkpoint['model_state_dict'])
+    epoch = checkpoint['epoch']
+    net.eval()
 
+    # Start segmenting
     cloud_segment(net, data_loader, output_path, config)
+
+    print("\033[92mSegmentation complete.\033[0m")
 
 if __name__ == "__main__":
     main()
