@@ -635,19 +635,19 @@ class Rail3DDataset(PointCloudDataset):
             centroid = np.array([pc['x'].mean(), pc['y'].mean(), pc['z'].mean()])
             xyz = np.vstack((pc['x'] - centroid[0], pc['y'] - centroid[1], pc['z'] - centroid[2])).T.astype(np.float32)
 
-            # color = np.vstack((pc['red'], pc['green'], pc['blue'])).T.astype(np.uint8)
-            # intensity = pc['scalar_Intensity'].astype(np.uint8)
-            # rgbi = np.hstack((color, intensity.reshape(-1, 1)))
-            #change 2023 i substract -1 from label, just to make remapping from [1,8] to [0,7]
-            labels = (pc['scalar_Classification']-1).astype(np.uint8)
-            mask = (pc["scalar_Classification"] <= 9) & (pc["scalar_Classification"] != 0)
-            labels = labels[mask]
-            xyz = xyz[mask]
+            if 'scalar_Classification' in pc.dtype.names:
+                # Change 2023: subtract 1 from label, remapping from [1,8] to [0,7]
+                labels = (pc['scalar_Classification'] - 1).astype(np.uint8)
+                mask = (pc["scalar_Classification"] <= 9) & (pc["scalar_Classification"] != 0)
+                labels = labels[mask]
+                xyz = xyz[mask]
+            else:
+                labels = np.zeros(xyz.shape[0], dtype=np.uint8)
 
             # Save as ply
             write_ply(join(ply_path, cloud_name + '.ply'),
-                    (xyz, labels),
-                    ['x', 'y', 'z', 'scalar_Label'])
+                  (xyz, labels),
+                  ['x', 'y', 'z', 'scalar_Label'])
 
         print('Done in {:.1f}s'.format(time.time() - t0))
         return
@@ -658,7 +658,7 @@ class Rail3DDataset(PointCloudDataset):
         dl = self.config.first_subsampling_dl
 
         # Create path for files
-        tree_path = join(self.path, 'input_{:.3f}'.format(dl))
+        tree_path = join(self.path, join(self.util_path, 'input_{:.3f}'.format(dl)))
         if not exists(tree_path):
             os.mkdir(tree_path)
 
@@ -1042,7 +1042,7 @@ class Rail3DSampler(Sampler):
         # ***********
 
         # Load batch_limit dictionary
-        batch_lim_file = join(self.dataset.path, 'batch_limits.pkl')
+        batch_lim_file = join(self.dataset.path, join(self.dataset.util_path, 'batch_limits.pkl'))
         if exists(batch_lim_file):
             with open(batch_lim_file, 'rb') as file:
                 batch_lim_dict = pickle.load(file)
@@ -1078,7 +1078,7 @@ class Rail3DSampler(Sampler):
         # ***************
 
         # Load neighb_limits dictionary
-        neighb_lim_file = join(self.dataset.path, 'neighbors_limits.pkl')
+        neighb_lim_file = join(self.dataset.path, join(self.dataset.util_path, 'neighbors_limits.pkl'))
         if exists(neighb_lim_file):
             with open(neighb_lim_file, 'rb') as file:
                 neighb_lim_dict = pickle.load(file)
