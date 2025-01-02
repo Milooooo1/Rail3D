@@ -843,7 +843,7 @@ if __name__ == '__main__':
     #       > 'last_XXX': Automatically retrieve the last trained model on dataset XXX
     #       > '(old_)results/Log_YYYY-MM-DD_HH-MM-SS': Directly provide the path of a trained model
 
-    chosen_log = r'results\Log_2024-12-20_19-20-32'
+    chosen_log = r'C:\Users\NL1A4G\OneDrive - Universiteit Utrecht\Scriptie\Models\Rail3D\Log_2024-12-23-SingleTrack-BetuweRoute'
 
     # Choose the index of the checkpoint to load OR None if you want to load the current checkpoint
     chkp_idx = -1
@@ -872,14 +872,14 @@ if __name__ == '__main__':
     chkp_path = os.path.join(chosen_log, 'checkpoints')
     chkps = [f for f in os.listdir(chkp_path) if f[:4] == 'chkp']
 
-    # Find which snapshot to restore
-    if chkp_idx is None:
-        chosen_chkp = 'current_chkp.tar'
-    else:
-        chosen_chkp = np.sort(chkps)[chkp_idx]
-    chosen_chkp = os.path.join(chosen_log, 'checkpoints', chosen_chkp)
+    # # Find which snapshot to restore
+    # if chkp_idx is None:
+    #     chosen_chkp = 'current_chkp.tar'
+    # else:
+    #     chosen_chkp = np.sort(chkps)[chkp_idx]
+    # chosen_chkp = os.path.join(chosen_log, 'checkpoints', chosen_chkp)
 
-    chosen_chkp = r'F:\Project\Pointclouds\Rail3D\KPConv_sncf\results\Log_2024-12-20_19-20-32\checkpoints\best_chkp_mIoU_62.0000_epoch_2.tar'
+    chosen_chkp = r'C:\Users\NL1A4G\OneDrive - Universiteit Utrecht\Scriptie\Models\Rail3D\Log_2024-12-23-SingleTrack-BetuweRoute\checkpoints\best_chkp_mIoU_62.0000_epoch_2.tar'
 
     # Initialize configuration class
     config = Config()

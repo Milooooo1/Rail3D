@@ -84,7 +84,7 @@ class SNCFDataset(PointCloudDataset):
         self.ignored_labels = np.array([])
 
         # Dataset folder
-        self.path = r'C:\Users\Milo\OneDrive - Universiteit Utrecht\Scriptie\Data\KPConv'
+        self.path = r'C:\Users\NL1A4G\OneDrive - Universiteit Utrecht\Scriptie\Data\KPConv'
 
         # Type of task conducted on this dataset
         self.dataset_task = 'cloud_segmentation'
@@ -118,12 +118,9 @@ class SNCFDataset(PointCloudDataset):
         self.all_splits = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]#, 11, 12, 13, 14, 15, 16]
         self.validation_split = [3, 8, 10]
         # self.test_cloud_names = ['sncf_09', 'sncf_11', 'sncf_13']
-        self.test_splits = [2, 9]
-        self.train_splits = [1, 4, 5, 6, 7]
+        self.test_splits = [2, 5]
+        self.train_splits = [1, 4, 6, 7, 9]
 
-        # Define offset
-        # self.UTM_OFFSET = [1701000, 3111000, 0]
-        self.UTM_OFFSET = [185000, 434000, 0]
 
         # Number of models used per epoch
         if self.set == 'training':
